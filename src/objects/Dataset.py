@@ -15,12 +15,7 @@ class Dataset:
         self.train_generator = None
         self.validation_generator = None
 
-        self.initialize()
-
-    # __________________________________________________________________________________________________________________
-    def initialize(self):
         self.set_data_generator()
-        self.set_train_val_generators()
 
     # __________________________________________________________________________________________________________________
     def set_data_generator(self):
@@ -46,4 +41,16 @@ class Dataset:
             class_mode=self.class_mode,
             batch_size=self.batch_size,
             subset="validation"
+        )
+
+    # __________________________________________________________________________________________________________________
+    def create_prediction_generator(self, dir):
+        return self.data_generator.flow_from_directory(
+            dir,
+            target_size=self.target_size,
+            shuffle=self.shuffle,
+            seed=self.seed,
+            class_mode=self.class_mode,
+            batch_size=self.batch_size,
+            subset="test"
         )

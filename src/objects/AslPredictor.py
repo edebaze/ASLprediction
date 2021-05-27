@@ -6,6 +6,7 @@ import keras
 from keras.models import Model
 from keras.layers import Dense, GlobalAveragePooling2D
 from tensorflow.keras.optimizers import SGD
+import os
 
 
 class AslPredictor:
@@ -28,10 +29,15 @@ class AslPredictor:
         self.validation_steps = model_params['validation_steps']
         self.epochs = model_params['epochs']
 
+        # OTHER
+        self.model_dir = model_params['model_dir']
+
     # __________________________________________________________________________________________________________________
     def run(self):
+        self.dataset.set_train_val_generators()
         self.create_model()
         self.train()
+        self.save_model('default_model')
         self.evaluate()
 
     # __________________________________________________________________________________________________________________
@@ -82,11 +88,16 @@ class AslPredictor:
         self.history = self.model.fit_generator(
             self.dataset.train_generator,
             validation_data=self.dataset.validation_generator,
-            steps_per_epoch=200,
-            validation_steps=50,
-            epochs=50,
+            steps_per_epoch=self.steps_per_epoch,
+            validation_steps=self.validation_steps,
+            epochs=self.epochs,
             callbacks=[self.callback]
         )
+
+    # __________________________________________________________________________________________________________________
+    def predict(self, dir):
+        prediction_generator = self.dataset.create_prediction_generator(dir)
+        return self.model.predict(prediction_generator)
 
     # __________________________________________________________________________________________________________________
     def save_model(self, model_name: str):
@@ -96,9 +107,30 @@ class AslPredictor:
             model_name: name of the model
         :return:
         """
-        self.model.save(model_name+'.h5')
+        self.model.save(self.model_path(model_name))
 
     # __________________________________________________________________________________________________________________
+    def load_model(self, model_name: str):
+        """
+            save model
+        :param
+            model_name: name of the model
+        :return:
+        """
+        self.model = keras.models.load_model(self.model_path(model_name))
+
+    ####################################################################################################################
+    # UTILS
+    def model_path(self, model_name: str):
+        path = os.path.join(os.path.dirname(os.path.dirname(os.path.curdir)), self.model_dir)
+
+        if os.path.isdir(path):
+            os.makedirs(path)
+
+        return os.path.join(self.model_dir, model_name + '.h5')
+
+    ####################################################################################################################
+    # EVALURATION & PLOTS
     def evaluate(self):
         """
             evaluate model performances
@@ -157,3 +189,4 @@ class AslPredictor:
     @property
     def num_labels(self):
         return len(np.unique(self.dataset.train_generator.labels))
+

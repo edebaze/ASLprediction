@@ -4,8 +4,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 import keras
 from keras.models import Model
-from keras.layers import Dense, GlobalAveragePooling2D
-from tensorflow.keras.optimizers import SGD
+from keras.layers import Dense, GlobalAveragePooling2D, InputLayer, Conv2D, MaxPooling2D, Flatten
+from tensorflow.keras.optimizers import Adam, SGD
 import os
 
 
@@ -46,38 +46,9 @@ class AslPredictor:
             create the model
         :return:
         """
+        self.model = self.create_new_model()
 
-        # load already trained model for transfer learning
-        inception_v3_model = keras.applications.inception_v3.InceptionV3(
-            input_shape=self.input_shape,
-            include_top=False,
-            weights=self.transfer_learning_model_name
-        )
-
-        inception_output = inception_v3_model.output
-
-        # add custom prediction layers
-        layers = GlobalAveragePooling2D()(inception_output)
-        layers = Dense(1024, activation='relu')(layers)
-        layers = Dense(self.num_labels, activation='softmax')(layers)
-
-        # create model
-        model = Model(inception_v3_model.input, layers)
-
-        # compile model
-        model.compile(
-            optimizer=SGD(lr=self.lr, momentum=self.momentum),
-            loss=self.loss_function,
-            metrics=self.metrics
-        )
-
-        # set first layers to non-trainable
-        for layer in model.layers[:self.first_trainable_layer]:
-            layer.trainable = False
-        for layer in model.layers[self.first_trainable_layer:]:
-            layer.trainable = True
-
-        self.model = model
+        # self.model = self.create_imagnet_model()
 
     # __________________________________________________________________________________________________________________
     def train(self):
@@ -85,7 +56,7 @@ class AslPredictor:
             train the model
         :return:
         """
-        self.history = self.model.fit_generator(
+        self.history = self.model.fit(
             self.dataset.train_generator,
             validation_data=self.dataset.validation_generator,
             steps_per_epoch=self.steps_per_epoch,
@@ -121,6 +92,71 @@ class AslPredictor:
 
     ####################################################################################################################
     # UTILS
+    def create_new_model(self):
+        model = keras.Sequential()
+
+        model.add(InputLayer(input_shape=self.input_shape))
+
+        model.add(Conv2D(filters=32, kernel_size=3))
+        model.add(Conv2D(filters=32, kernel_size=3))
+        model.add(MaxPooling2D(pool_size=(2, 2)))
+
+        model.add(Conv2D(filters=64, kernel_size=3))
+        model.add(Conv2D(filters=64, kernel_size=3))
+        model.add(MaxPooling2D(pool_size=(2, 2)))
+
+        model.add(Conv2D(filters=128, kernel_size=3))
+        model.add(Conv2D(filters=128, kernel_size=3))
+        model.add(MaxPooling2D(pool_size=(2, 2)))
+
+        model.add(Flatten())
+        model.add(Dense(1024))
+        model.add(Dense(1024))
+        model.add(Dense(self.num_labels))
+
+        model.compile(
+            optimizer='adam',
+            loss=self.loss_function,
+            metrics=['acc']
+        )
+
+        return model
+
+    # __________________________________________________________________________________________________________________
+    def create_imagnet_model(self):
+        # load already trained model for transfer learning
+        inception_v3_model = keras.applications.inception_v3.InceptionV3(
+            input_shape=self.input_shape,
+            include_top=False,
+            weights=self.transfer_learning_model_name
+        )
+
+        inception_output = inception_v3_model.output
+
+        # add custom prediction layers
+        layers = GlobalAveragePooling2D()(inception_output)
+        layers = Dense(1024, activation='relu')(layers)
+        layers = Dense(self.num_labels, activation='softmax')(layers)
+
+        # create model
+        model = Model(inception_v3_model.input, layers)
+
+        # compile model
+        model.compile(
+            optimizer=SGD(lr=self.lr, momentum=self.momentum),
+            loss=self.loss_function,
+            metrics=self.metrics
+        )
+
+        # set first layers to non-trainable
+        for layer in model.layers[:self.first_trainable_layer]:
+            layer.trainable = False
+        for layer in model.layers[self.first_trainable_layer:]:
+            layer.trainable = True
+
+        return model
+
+    # __________________________________________________________________________________________________________________
     def model_path(self, model_name: str):
         path = os.path.join(os.path.dirname(os.path.dirname(os.path.curdir)), self.model_dir)
 

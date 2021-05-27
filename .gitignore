@@ -1,3 +1,7 @@
+/env
 /data
 /.ipynb_checkpoints
 /Project ASL.ipynb
+/src/flask_api/dl_model/dataset/
+/src/flask_api/dl_model/saved_model/
+__pycache__/

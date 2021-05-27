@@ -12,7 +12,7 @@ def get_model_params():
         # TRAINING PARAMS
         'steps_per_epoch': 200,
         'validation_steps': 50,
-        'epochs': 1,
+        'epochs': 50,
 
         # OTHER
         'model_dir': 'models'

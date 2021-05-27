@@ -117,7 +117,7 @@ class AslPredictor:
         model.compile(
             optimizer='adam',
             loss=self.loss_function,
-            metrics=['acc']
+            metrics=self.metrics
         )
 
         return model
